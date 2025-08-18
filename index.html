@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Crypto Prices</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            color: #ffffff;
+            font-weight: 300;
+            letter-spacing: -0.5px;
+        }
+
+        .crypto-grid {
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+
+        .crypto-card {
+            background: #2d2d2d;
+            border-radius: 12px;
+            padding: 2rem 1.5rem;
+            border: 1px solid #404040;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .crypto-card:hover {
+            transform: translateY(-2px);
+            border-color: #555555;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .crypto-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #ffffff;
+        }
+
+        .crypto-symbol {
+            font-size: 0.9rem;
+            color: #aaaaaa;
+            margin-bottom: 1rem;
+        }
+
+        .crypto-price {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #ffffff;
+            transition: color 0.3s ease;
+        }
+
+        .price-change {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            opacity: 0;
+        }
+
+        .price-up {
+            background-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .price-down {
+            background-color: #ff4444;
+            box-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+        }
+
+        .price-change.show {
+            opacity: 1;
+        }
+
+        .loading {
+            color: #aaaaaa;
+            font-style: italic;
+        }
+
+        .error {
+            color: #ff4444;
+            font-size: 0.9rem;
+        }
+
+        .last-updated {
+            margin-top: 2rem;
+            color: #888888;
+            font-size: 0.85rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #00ff88;
+            margin-right: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2rem;
+                margin-bottom: 2rem;
+            }
+            
+            .crypto-card {
+                padding: 1.5rem 1rem;
+            }
+            
+            .crypto-price {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Live Crypto Prices</h1>
+        
+        <div class="crypto-grid">
+            <div class="crypto-card" id="btc-card">
+                <div class="price-change" id="btc-change"></div>
+                <div class="crypto-name">Bitcoin</div>
+                <div class="crypto-symbol">BTC</div>
+                <div class="crypto-price" id="btc-price">Loading...</div>
+            </div>
+            
+            <div class="crypto-card" id="eth-card">
+                <div class="price-change" id="eth-change"></div>
+                <div class="crypto-name">Ethereum</div>
+                <div class="crypto-symbol">ETH</div>
+                <div class="crypto-price" id="eth-price">Loading...</div>
+            </div>
+            
+            <div class="crypto-card" id="sol-card">
+                <div class="price-change" id="sol-change"></div>
+                <div class="crypto-name">Solana</div>
+                <div class="crypto-symbol">SOL</div>
+                <div class="crypto-price" id="sol-price">Loading...</div>
+            </div>
+        </div>
+        
+        <div class="last-updated">
+            <span class="status-indicator"></span>
+            <span id="last-update">Connecting...</span>
+        </div>
+    </div>
+
+    <script>
+        class CryptoPriceTracker {
+            constructor() {
+                this.coins = {
+                    btc: { symbol: 'BTCUSD', name: 'Bitcoin', lastPrice: null },
+                    eth: { symbol: 'ETHUSD', name: 'Ethereum', lastPrice: null },
+                    sol: { symbol: 'SOLUSD', name: 'Solana', lastPrice: null }
+                };
+                this.updateInterval = null;
+                this.init();
+            }
+
+            init() {
+                this.fetchAllPrices();
+                this.startAutoUpdate();
+            }
+
+            async fetchPrice(coinKey) {
+                const coin = this.coins[coinKey];
+                const url = `https://api.gemini.com/v1/pubticker/${coin.symbol}`;
+                
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    const currentPrice = parseFloat(data.last);
+                    
+                    this.updatePriceDisplay(coinKey, currentPrice);
+                    
+                    // Update price change indicator
+                    if (coin.lastPrice !== null) {
+                        this.showPriceChange(coinKey, currentPrice > coin.lastPrice);
+                    }
+                    
+                    coin.lastPrice = currentPrice;
+                    
+                } catch (error) {
+                    console.error(`Error fetching ${coin.name} price:`, error);
+                    this.updatePriceDisplay(coinKey, null, error.message);
+                }
+            }
+
+            updatePriceDisplay(coinKey, price, error = null) {
+                const priceElement = document.getElementById(`${coinKey}-price`);
+                
+                if (error) {
+                    priceElement.textContent = 'Error';
+                    priceElement.className = 'crypto-price error';
+                } else if (price !== null) {
+                    priceElement.textContent = `$${price.toLocaleString('en-US', { 
+                        minimumFractionDigits: 2, 
+                        maximumFractionDigits: 2 
+                    })}`;
+                    priceElement.className = 'crypto-price';
+                } else {
+                    priceElement.textContent = 'Loading...';
+                    priceElement.className = 'crypto-price loading';
+                }
+            }
+
+            showPriceChange(coinKey, isUp) {
+                const changeElement = document.getElementById(`${coinKey}-change`);
+                
+                // Remove existing classes
+                changeElement.classList.remove('price-up', 'price-down', 'show');
+                
+                // Add new class and show
+                setTimeout(() => {
+                    changeElement.classList.add(isUp ? 'price-up' : 'price-down', 'show');
+                    
+                    // Hide after 3 seconds
+                    setTimeout(() => {
+                        changeElement.classList.remove('show');
+                    }, 3000);
+                }, 100);
+            }
+
+            async fetchAllPrices() {
+                const promises = Object.keys(this.coins).map(coinKey => 
+                    this.fetchPrice(coinKey)
+                );
+                
+                await Promise.allSettled(promises);
+                this.updateLastUpdatedTime();
+            }
+
+            updateLastUpdatedTime() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-US', { 
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                
+                document.getElementById('last-update').textContent = 
+                    `Last updated: ${timeString}`;
+            }
+
+            startAutoUpdate() {
+                // Update every 10 seconds
+                this.updateInterval = setInterval(() => {
+                    this.fetchAllPrices();
+                }, 10000);
+            }
+
+            stop() {
+                if (this.updateInterval) {
+                    clearInterval(this.updateInterval);
+                    this.updateInterval = null;
+                }
+            }
+        }
+
+        // Initialize the app when page loads
+        let cryptoTracker;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            cryptoTracker = new CryptoPriceTracker();
+        });
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (cryptoTracker) {
+                cryptoTracker.stop();
+            }
+        });
+
+        // Handle visibility change (pause when tab is not active)
+        document.addEventListener('visibilitychange', () => {
+            if (cryptoTracker) {
+                if (document.hidden) {
+                    cryptoTracker.stop();
+                } else {
+                    cryptoTracker.fetchAllPrices();
+                    cryptoTracker.startAutoUpdate();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
