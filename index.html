@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪙</text></svg>">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <style>
         :root {
             /* Dark theme colors */
@@ -583,9 +585,9 @@
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 20px;
-            width: 90%;
-            max-width: 800px;
-            max-height: 90vh;
+            width: 95%;
+            max-width: 1200px;
+            max-height: 95vh;
             overflow-y: auto;
             box-shadow: 0 20px 60px var(--shadow);
             transform: scale(0.9) translateY(20px);
@@ -781,6 +783,119 @@
             box-shadow: 0 4px 12px rgba(56, 97, 251, 0.3);
         }
 
+        .modal-chart-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .modal-chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .modal-chart-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .timeframe-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .timeframe-btn {
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .timeframe-btn:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .timeframe-btn.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 1rem;
+        }
+
+        .chart-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 400px;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .modal-origin-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .modal-origin-section h3 {
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .origin-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .origin-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .origin-item:last-child {
+            border-bottom: none;
+        }
+
+        .origin-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .origin-value {
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-align: right;
+        }
+
         /* Animations */
         @keyframes fadeInUp {
             from {
@@ -945,6 +1060,24 @@
             .modal-links {
                 justify-content: center;
             }
+            
+            .modal-chart-header {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            
+            .timeframe-buttons {
+                justify-content: center;
+            }
+            
+            .chart-container {
+                height: 300px;
+            }
+            
+            .origin-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         /* Smooth scrolling */
@@ -1044,6 +1177,30 @@
                     </div>
                 </div>
                 
+                <div class="modal-chart-section">
+                    <div class="modal-chart-header">
+                        <h3 class="modal-chart-title">Price Chart</h3>
+                        <div class="timeframe-buttons">
+                            <button class="timeframe-btn" data-days="1">24H</button>
+                            <button class="timeframe-btn" data-days="7">7D</button>
+                            <button class="timeframe-btn active" data-days="30">30D</button>
+                            <button class="timeframe-btn" data-days="90">90D</button>
+                            <button class="timeframe-btn" data-days="365">1Y</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-loading" id="chart-loading">Loading price chart...</div>
+                        <canvas id="price-chart" style="display: none;"></canvas>
+                    </div>
+                </div>
+                
+                <div class="modal-origin-section">
+                    <h3>Coin Information</h3>
+                    <div class="origin-grid" id="modal-origin-info">
+                        <!-- Origin info will be populated dynamically -->
+                    </div>
+                </div>
+                
                 <div class="modal-stats-grid">
                     <div class="modal-stat-card">
                         <div class="modal-stat-value" id="modal-market-cap">$0</div>
@@ -1100,6 +1257,8 @@
                 this.isUpdating = false;
                 this.searchTerm = '';
                 this.currentModal = null;
+                this.currentChart = null;
+                this.currentTimeframe = 30;
                 this.init();
             }
 
@@ -1135,6 +1294,18 @@
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape' && this.currentModal) {
                         this.closeModal();
+                    }
+                });
+
+                // Timeframe button listeners
+                document.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('timeframe-btn')) {
+                        document.querySelectorAll('.timeframe-btn').forEach(btn => btn.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentTimeframe = parseInt(e.target.dataset.days);
+                        if (this.currentModal) {
+                            this.loadPriceChart(this.currentModal, this.currentTimeframe);
+                        }
                     }
                 });
             }
@@ -1205,6 +1376,7 @@
                     }));
                     
                     this.filteredCoins = [...this.coins];
+                    this.filterCoins(); // Apply current search filter
                     this.updateStats();
                     this.renderTable();
                     this.updateLastUpdatedTime();
@@ -1428,9 +1600,12 @@
                 modal.classList.add('active');
                 document.body.style.overflow = 'hidden';
                 
+                // Load price chart
+                this.loadPriceChart(coin.id, this.currentTimeframe);
+                
                 // Fetch detailed information
                 try {
-                    const response = await fetch(`https://api.coingecko.com/api/v3/coins/${coin.id}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false`);
+                    const response = await fetch(`https://api.coingecko.com/api/v3/coins/${coin.id}?localization=false&tickers=false&market_data=true&community_data=true&developer_data=true&sparkline=false`);
                     
                     if (response.ok) {
                         const detailedCoin = await response.json();
@@ -1439,6 +1614,9 @@
                         const description = detailedCoin.description?.en || 'No description available for this cryptocurrency.';
                         const cleanDescription = description.replace(/<[^>]*>/g, '').substring(0, 500) + (description.length > 500 ? '...' : '');
                         document.getElementById('modal-description-text').textContent = cleanDescription;
+                        
+                        // Update origin information
+                        this.updateOriginInfo(detailedCoin);
                         
                         // Update links
                         const linksContainer = document.getElementById('modal-links');
@@ -1457,6 +1635,12 @@
                             if (detailedCoin.links.repos_url?.github?.[0]) {
                                 linksContainer.innerHTML += `<a href="${detailedCoin.links.repos_url.github[0]}" target="_blank" class="modal-link">💻 GitHub</a>`;
                             }
+                            if (detailedCoin.links.subreddit_url) {
+                                linksContainer.innerHTML += `<a href="${detailedCoin.links.subreddit_url}" target="_blank" class="modal-link">💬 Reddit</a>`;
+                            }
+                            if (detailedCoin.links.twitter_screen_name) {
+                                linksContainer.innerHTML += `<a href="https://twitter.com/${detailedCoin.links.twitter_screen_name}" target="_blank" class="modal-link">🐦 Twitter</a>`;
+                            }
                         }
                     }
                 } catch (error) {
@@ -1464,11 +1648,201 @@
                 }
             }
             
+            updateOriginInfo(detailedCoin) {
+                const originContainer = document.getElementById('modal-origin-info');
+                const genesisDate = detailedCoin.genesis_date ? new Date(detailedCoin.genesis_date).toLocaleDateString() : 'Unknown';
+                const hashingAlgorithm = detailedCoin.hashing_algorithm || 'Unknown';
+                const blockTime = detailedCoin.block_time_in_minutes ? `${detailedCoin.block_time_in_minutes} minutes` : 'Unknown';
+                const categories = detailedCoin.categories?.join(', ') || 'Unknown';
+                const platform = detailedCoin.platform?.name || 'Native Blockchain';
+                const contractAddress = detailedCoin.contract_address || 'N/A';
+                
+                originContainer.innerHTML = `
+                    <div class="origin-item">
+                        <span class="origin-label">Genesis Date</span>
+                        <span class="origin-value">${genesisDate}</span>
+                    </div>
+                    <div class="origin-item">
+                        <span class="origin-label">Hashing Algorithm</span>
+                        <span class="origin-value">${hashingAlgorithm}</span>
+                    </div>
+                    <div class="origin-item">
+                        <span class="origin-label">Block Time</span>
+                        <span class="origin-value">${blockTime}</span>
+                    </div>
+                    <div class="origin-item">
+                        <span class="origin-label">Categories</span>
+                        <span class="origin-value">${categories}</span>
+                    </div>
+                    <div class="origin-item">
+                        <span class="origin-label">Platform</span>
+                        <span class="origin-value">${platform}</span>
+                    </div>
+                    <div class="origin-item">
+                        <span class="origin-label">Contract Address</span>
+                        <span class="origin-value">${contractAddress.length > 20 ? contractAddress.substring(0, 20) + '...' : contractAddress}</span>
+                    </div>
+                `;
+            }
+
+            async loadPriceChart(coinId, days) {
+                const chartLoading = document.getElementById('chart-loading');
+                const chartCanvas = document.getElementById('price-chart');
+                
+                // Show loading
+                chartLoading.style.display = 'flex';
+                chartCanvas.style.display = 'none';
+                
+                // Destroy existing chart
+                if (this.currentChart) {
+                    this.currentChart.destroy();
+                    this.currentChart = null;
+                }
+                
+                try {
+                    const response = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=${days <= 1 ? 'hourly' : days <= 90 ? 'daily' : 'weekly'}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Hide loading, show chart
+                    chartLoading.style.display = 'none';
+                    chartCanvas.style.display = 'block';
+                    
+                    // Prepare chart data
+                    const prices = data.prices.map(([timestamp, price]) => ({
+                        x: new Date(timestamp),
+                        y: price
+                    }));
+                    
+                    const volumes = data.total_volumes.map(([timestamp, volume]) => ({
+                        x: new Date(timestamp),
+                        y: volume
+                    }));
+                    
+                    // Create chart
+                    const ctx = chartCanvas.getContext('2d');
+                    this.currentChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            datasets: [
+                                {
+                                    label: 'Price (USD)',
+                                    data: prices,
+                                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--accent-primary'),
+                                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--glow'),
+                                    borderWidth: 2,
+                                    fill: true,
+                                    tension: 0.1,
+                                    pointRadius: 0,
+                                    pointHoverRadius: 4,
+                                    yAxisID: 'y'
+                                },
+                                {
+                                    label: 'Volume (USD)',
+                                    data: volumes,
+                                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--warning'),
+                                    backgroundColor: 'rgba(255, 167, 38, 0.1)',
+                                    borderWidth: 1,
+                                    fill: true,
+                                    tension: 0.1,
+                                    pointRadius: 0,
+                                    pointHoverRadius: 4,
+                                    yAxisID: 'y1',
+                                    hidden: true // Hidden by default
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
+                            },
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    labels: {
+                                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary'),
+                                        usePointStyle: true
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-card'),
+                                    titleColor: getComputedStyle(document.documentElement).getPropertyValue('--text-primary'),
+                                    bodyColor: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary'),
+                                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border'),
+                                    borderWidth: 1
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    type: 'time',
+                                    time: {
+                                        displayFormats: {
+                                            hour: 'MMM dd HH:mm',
+                                            day: 'MMM dd',
+                                            week: 'MMM dd',
+                                            month: 'MMM yyyy'
+                                        }
+                                    },
+                                    grid: {
+                                        color: getComputedStyle(document.documentElement).getPropertyValue('--border')
+                                    },
+                                    ticks: {
+                                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary')
+                                    }
+                                },
+                                y: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    grid: {
+                                        color: getComputedStyle(document.documentElement).getPropertyValue('--border')
+                                    },
+                                    ticks: {
+                                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary'),
+                                        callback: function(value) {
+                                            return '$' + value.toFixed(value < 1 ? 6 : 2);
+                                        }
+                                    }
+                                },
+                                y1: {
+                                    type: 'linear',
+                                    display: false,
+                                    position: 'right',
+                                    grid: {
+                                        drawOnChartArea: false,
+                                    },
+                                    ticks: {
+                                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary')
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                } catch (error) {
+                    console.error('Error loading price chart:', error);
+                    chartLoading.textContent = 'Failed to load chart data';
+                }
+            }
+
             closeModal() {
                 const modal = document.getElementById('coin-modal');
                 modal.classList.remove('active');
                 document.body.style.overflow = '';
                 this.currentModal = null;
+                
+                // Destroy chart when closing modal
+                if (this.currentChart) {
+                    this.currentChart.destroy();
+                    this.currentChart = null;
+                }
             }
 
             animatePriceChanges() {
